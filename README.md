@@ -4,4 +4,4 @@
 This project was conducted from November '23 to February '24. Key aspects that characterizes it are Bayesian Statistics, Monte-Carlo Markov Chain, Time Series Analysis and Forecasting, Autoregressive Models.
 
 ## Download the report
-[Complete Report](./.pdf)
+[Complete Report](./Report.pdf)
