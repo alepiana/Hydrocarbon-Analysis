@@ -5,3 +5,7 @@ This project was conducted from November '23 to February '24. Key aspects that c
 
 ## Download the report
 [Complete Report](./Report.pdf)
+
+## Download Final Presentation
+
+[Presentation](./final_pres_Bayes.pdf)
