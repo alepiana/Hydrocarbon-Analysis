@@ -1,0 +1,344 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Abbiamo pulito il dataset togliendo le variabili PM10 e Volume perché non di nostro interesse e mannosano + galattosano perché con troppi pochi dati (inoltre abbiamo già le variabili mannosano e galattosano singolarmente). Le covariate in esame sono quindi 17.
+```{r}
+library(readxl)
+data_pascal <- read_excel("Clean_data.xlsx",
+                      sheet = "Pascal_clean")
+head(data_pascal)
+```
+
+Numero di NA per ogni covariata
+```{r}
+for (i in 2:length(data_pascal)){
+  print(sum(is.na(data_pascal[i])))
+}
+```
+Plot di ciascuna covariata
+```{r}
+for(i in 2:length(data_pascal)){
+  plot(data_pascal$`Data camp.`, data_pascal[[i]],type="l")
+}
+```
+
+AUTOCORRELATION PLOT
+
+Soglia per giudicare il parametro dell'AR: 0.5
+
+Rimuoviamo tutti gli NA per ciascuna covariata prima di fare l'autocorrelation plot
+
+Cl- : AR(2)
+I dati presentano NA per un periodo di 6 mesi (1/1/16-4/7/16), per questo motivo valutiamo due volte i dati: una volta rimuovendo gli NA, l'altra considerando i dati dal 5/7/16 fino alla fine per vedere se gli NA modificano di tanto l'autocorrelazione.
+
+Rimuovendo gli NA
+```{r}
+na_vect <- is.na(data_pascal$`Cl-`)
+test <- data_pascal$`Cl-`[which(na_vect == FALSE)]
+
+acf(test)
+```
+
+Considerando i dati dal 5/7/16 (1147-esima riga)
+```{r}
+cl <- data_pascal$`Cl-`[1147:length(data_pascal$`Cl-`)]
+na_vect <- is.na(cl)
+test <- cl[which(na_vect == FALSE)]
+
+acf(test)
+```
+
+In entrambi i casi AR(1)
+
+NO2- : AR(1)
+
+I dati presentano NA per un periodo di oltre un anno (1/1/13-28/2/14), per questo motivo valutiamo due volte i dati: una volta rimuovendo gli NA, l'altra considerando i dati dal 1/3/14 fino alla fine per vedere se gli NA modificano di tanto l'autocorrelazione.
+```{r}
+na_vect <- is.na(data_pascal$`NO2-`)
+test <- data_pascal$`NO2-`[which(na_vect == FALSE)]
+
+acf(test)
+```
+
+Considerando i dati dal 1/3/14 (395-esima riga)
+```{r}
+no2 <- data_pascal$`NO2-`[395:length(data_pascal$`NO2-`)]
+na_vect <- is.na(no2)
+test <- no2[which(na_vect == FALSE)]
+
+acf(test)
+```
+Non cambia nulla, nei prime 394 dati che abbiamo scartato c'erano 391 NA e soli tre valori numerici. Non cambia nulla se non li consideriamo (com'era prevedibile)
+
+Br- : i dati fanno schifo, sono tutti valori <0.07 o <0.03 quindi risultano costanti
+```{r}
+na_vect <- is.na(data_pascal$`Br-`)
+test <- data_pascal$`Br-`[which(na_vect == FALSE)]
+
+plot(test)
+acf(test)
+```
+
+
+NO3- : AR(3)
+
+Non ci sono troppi NA consecutivi (almeno a giudicare dal plot iniziale dei dati)
+
+```{r}
+na_vect <- is.na(data_pascal$`NO3-`)
+test <- data_pascal$`NO3-`[which(na_vect == FALSE)]
+
+acf(test)
+```
+
+
+
+
+
+PO43- : i dati fanno schifo, sono tutti valori <0.2 o <0.09 quindi risultano costanti
+
+```{r}
+na_vect <- is.na(data_pascal$`PO43-`)
+test <- data_pascal$`PO43-`[which(na_vect == FALSE)]
+
+acf(test)
+```
+
+SO42- : AR(2)
+
+```{r}
+na_vect <- is.na(data_pascal$`SO42-`)
+test <- data_pascal$`SO42-`[which(na_vect == FALSE)]
+
+acf(test)
+```
+
+
+Na+ : ci sono parecchi <0.27 e <0.12, non so quanto si possa utilizzare
+
+```{r}
+na_vect <- is.na(data_pascal$`Na+`)
+test <- data_pascal$`Na+`[which(na_vect == FALSE)]
+
+acf(test)
+```
+
+NH4+ : AR(3)
+
+```{r}
+na_vect <- is.na(data_pascal$`NH4+`)
+test <- data_pascal$`NH4+`[which(na_vect == FALSE)]
+
+acf(test)
+```
+
+
+
+K+ : ha diversi <0.08 e <0.18 e i valori numerici registrati sono molto piccoli (anche più piccoli di 0.18), quindi la scelta nel dare un valore a <0.08 e <0.18 è cruciale
+
+```{r}
+na_vect <- is.na(data_pascal$`K+`)
+test <- data_pascal$`K+`[which(na_vect == FALSE)]
+
+acf(test)
+```
+
+
+
+Mg2+ : ha diversi <0.06 e <0.13 e i valori numerici registrati sono molto piccoli (anche più piccoli di 0.13), quindi la scelta nel dare un valore a <0.06 e <0.13 è cruciale
+
+```{r}
+na_vect <- is.na(data_pascal$`Mg2+`)
+test <- data_pascal$`Mg2+`[which(na_vect == FALSE)]
+
+acf(test)
+```
+
+
+Ca2+ : AR(2)
+
+```{r}
+na_vect <- is.na(data_pascal$`Ca2+`)
+test <- data_pascal$`Ca2+`[which(na_vect == FALSE)]
+
+acf(test)
+```
+
+
+
+Arabitolo : a parte 9 misurazioni tra il 2/11/12 e il 10/11/12, ci sono NA fino al 25/7/14. Considero i dati dal 26/7/14 (riga 496). Risultano comunque tanti <0.05 e <0.02
+
+```{r}
+ar <- data_pascal$`Arabitolo`[496:length(data_pascal$`Arabitolo`)]
+na_vect <- is.na(ar)
+test <- ar[which(na_vect == FALSE)]
+
+acf(test)
+```
+
+
+Mannitolo : a parte 9 misurazioni tra il 2/11/12 e il 10/11/12, ci sono NA fino al 26/7/14. Considero i dati dal 27/7/14 (riga 497). Risultano comunque tanti <0.05 e <0.02
+
+```{r}
+man <- data_pascal$`Mannitolo`[497:length(data_pascal$`Mannitolo`)]
+na_vect <- is.na(man)
+test <- man[which(na_vect == FALSE)]
+
+acf(test)
+```
+
+
+
+Levoglucosano : AR(3)
+Dal plot iniziale non sembrano male i dati; ci sono solo 2 periodi con NA: dal 19/3/14 al 26/7/14 e dal 5/7/16 al 4/10/16. Faccio comunque l'analisi di autocorrelazione togliendo gli NA
+
+```{r}
+na_vect <- is.na(data_pascal$`Levoglucosano`)
+test <- data_pascal$`Levoglucosano`[which(na_vect == FALSE)]
+
+acf(test)
+```
+
+
+Mannosano : presenta tanti <0.05 e <0.02 oltre a NA dal 19/3/14 al 26/7/14
+
+```{r}
+na_vect <- is.na(data_pascal$`Mannosano`)
+test <- data_pascal$`Mannosano`[which(na_vect == FALSE)]
+
+acf(test)
+```
+
+
+
+Galattosano: presenta tanti <0.05 e <0.02
+
+```{r}
+na_vect <- is.na(data_pascal$`Galattosano`)
+test <- data_pascal$`Galattosano`[which(na_vect == FALSE)]
+
+acf(test)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+na_vect <- is.na(data_pascal[[8]])
+test <- data_pascal[[8]][which(na_vect == FALSE)]
+
+acf(test)
+```
+
+```{r}
+na_vect <- is.na(data_pascal[[16]])
+test <- data_pascal[[16]][which(na_vect == FALSE)]
+
+acf(test)
+```
+
+```{r}
+na_vect <- is.na(data_pascal[[2]])
+test <- data_pascal[[2]][which(na_vect == FALSE)]
+
+acf(test)
+```
+
+```{r}
+na_vect <- is.na(data_pascal[[2]])
+test <- data_pascal[[2]][which(na_vect == FALSE)]
+test <- test[1500:length(test)]
+
+acf(test)
+```
+
+```{r}
+na_vect <- is.na(data_pascal[[2]])
+test <- data_pascal[[2]][which(na_vect == FALSE)]
+test <- test[1:1500]
+
+acf(test)
+```
+
+```{r}
+model <- arima(data_pascal$`Cl-`, order = c(1,0,0))
+model
+```
+
+
+
+
+
+
+
+```{r}
+sapply(data_pascal, mean)
+```
+
+```{r}
+plot(data_pascal$`Data camp.`, data_pascal$PM)
+
+plot(data_pascal$PM, data_pascal$`Cl-`)
+```
+
+```{r}
+cor(data_pascal[-1])
+```
+
+
+
+
+TRANSF LOGARITMICA
+
+```{r}
+aaaa <- na.omit(data_pascal)
+log_data <- log(aaaa[,2:length(aaaa)])
+
+for(i in 2:length(log_data)){
+  plot(log_data[[i]])
+}
+  
+```
+
+
+
+CONSIDERIAMO SOLO I DATI CHE PRESENTANO UNA STAGIONALITA
+```{r}
+seasonal_p <- data_pascal[,c(2,5,7,9,10,11,12,15)]
+
+#carlotta <- na.omit(seasonal_s)
+carlotta <- seasonal_p
+log_seasonal <- log(carlotta[,2:length(carlotta)])
+
+for(i in 2:length(log_seasonal)){
+  plot(log_seasonal[[i]], type="l")
+}
+```
+
+
+```{r}
+plot(data_pascal$`Data camp.`, seasonal_p[[1]],type="l",ylim=c(0,75),col="forestgreen",xlab="Time", ylab="Pollutants",main= "Time Series Pascal")
+for(i in 2:length(seasonal_p)){
+  lines(data_pascal$`Data camp.`,seasonal_p[[i]], type="l", col=i)
+}
+```
+
+
+Coi dati log
+```{r}
+plot(data_pascal$`Data camp.`, log_seasonal[[1]],type="l",ylim=c(-5,5),col="forestgreen",xlab="Time", ylab="Pollutants",main= "Log Time Series Pascal")
+for(i in 2:length(log_seasonal)){
+  lines(data_pascal$`Data camp.`,log_seasonal[[i]], type="l", col=i)
+}
+```
