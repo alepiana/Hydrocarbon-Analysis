@@ -1,0 +1,337 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(mbsts)
+```
+
+```{r}
+library(readxl)
+data <- read_excel("Dati_Schiv_mean.xlsx",
+                      sheet = "Sheet 1")
+
+data_meteo <- read_excel("Dati_meteo_mean.xlsx",
+                         sheet = "Sheet 1")
+
+data_meteo <- data_meteo[data$settimana,]
+```
+
+```{r}
+newdata <- data[,-c(4,6,13,14,16,17)]
+
+for (i in 2:11){
+  plot(newdata[[i]], type='l')
+}
+
+data<- newdata
+```
+
+```{r}
+# Ommit na's by setting as value the previous observation
+N <- dim(data)[1]
+d = dim(data)[2]
+
+for (j in 1:d){
+  idx_na <- which(is.na(data[,j]))
+  for (i in idx_na){
+    data[i,j] <- data[i-1,j]
+  }
+}
+
+# Same for the temperature
+N <- dim(data_meteo)[1]
+d = dim(data_meteo)[2]
+
+for (j in 1:d){
+  idx_na <- which(is.na(data_meteo[,j]))
+  for (i in idx_na){
+    data_meteo[i,j] <- data_meteo[i-1,j]
+  }
+}
+```
+
+```{r}
+n_test <- 20
+
+x <- log(data[,c(2,3,4,5,6,7)])
+N <- dim(x)[1]
+d = dim(x)[2]
+
+meteo_vars <- c("temp_mean", "humidity_mean", "rain_mean")
+m <- length(meteo_vars)
+
+y_train <- as.matrix(x[-c(1),])
+x_train <- data.frame(to_delete = numeric(N-1))
+
+for (i in 1:d){
+  for (j in 1:d){
+    col_name <- paste("x", j, ".", i, sep="")
+    x_train[col_name] <- x[-N,j]
+  }
+  for (name in meteo_vars){
+    col_name <- paste(name, ".", i, sep="")
+    x_train[col_name] <- data_meteo[[name]][-N]
+  }
+}
+
+x_train <- as.matrix(x_train[,-1])
+
+N <- dim(y_train)[1]
+y_test <- y_train[(N-n_test+1):N,]
+x_test <- x_train[(N-n_test+1):N,]
+
+y_train <- y_train[1:(N-n_test),]
+x_train <- x_train[1:(N-n_test),]
+```
+
+```{r}
+plot(y_train[,1], type = "l", col = rainbow(d)[1],
+     ylim = c(min(y_train), max(y_train)))
+for (i in 2:d){
+  lines(y_train[,i], col = rainbow(d)[i])
+}
+```
+
+
+```{r}
+#Specify time series components
+STmodel <- tsc.setting(Ytrain = y_train, mu = rep(1,d),
+                       rho = rep(0,d), S = NULL,
+                       vrho = rep(0.9,d), lambda = rep(2*pi/4,d))
+
+ki <- seq(d+m, d*(d+m), by = d+m)
+pii <- rep(0.5, d*(d+m))
+
+for (i in 1:d){
+  pos <- (i-1)*(d+m) + i
+  pii[pos] <- 0.99
+}
+# for(i in 1:d){
+#   for(j in 1:d){
+#     pii[(i-1)*d+j] <- ifelse(i==j,0.99,0.5)
+#   }
+# }
+```
+
+
+```{r}
+#Train a mbsts model
+start_time <- Sys.time()
+mbsts.model <- mbsts_function(y_train, x_train, STmodel, ki, pii,
+                              v0=d+3, mc=1500, burn=500)
+
+print(Sys.time() - start_time)
+```
+
+```{r}
+#Parameter estimation
+estimated_params <- para.est(mbsts.model, prob.threshold = 0.5)
+estimated_params
+```
+
+```{r}
+#Plot convergence diagnosis
+for (i in estimated_params$index){
+  plot_cvg(mbsts.model, index = i)
+}
+```
+
+```{r}
+# Plot
+plot_comp(mbsts.model, slope=rep(F, d), local=rep(T, d),
+          season = rep(F,d), cyc = rep(T,d))
+```
+
+```{r}
+plot_prob(object=mbsts.model, prob.threshold=0.5,
+          varnames=colnames(x_train))
+```
+
+```{r}
+# Mean variance covariance and correlation matrix across MCMC draws
+
+sigmas <- mbsts.model@ob.sig2
+
+mean_sigma <- sigmas[,,1]
+for (i in 2:dim(sigmas)[3]){
+  mean_sigma <- mean_sigma + sigmas[,,i]
+}
+mean_sigma <- mean_sigma / dim(sigmas)[3]
+
+mean_cor <- cov2cor(mean_sigma)
+
+mean_sigma
+mean_cor
+```
+
+
+```{r}
+# Visualization of variance and covariances distributions
+
+for (i in 1:(d-1)){
+  for (j in (i+1):d){
+    hist(sigmas[i,j,], breaks = 20,
+         main = paste("Covariance between ", i, " and ", j))
+    sig_quant <- quantile(sigmas[i,j,], probs = c(0.025, 0.975))
+    abline(v = sig_quant[1], col = "red")
+    abline(v = sig_quant[2], col = "red")
+    abline(v = 0, col = "black", lwd = 3)
+  }
+}
+```
+
+```{r}
+# Forecast with test set
+
+predicted <- mbsts.forecast(mbsts.model, STmodel, x_test, steps = n_test)
+predicted_mean <- predicted$pred.mean
+
+plot_prediction <- function(N_before = 100, log_scale = T){
+  N_train <- dim(y_train)[1]
+  grid_train <- (N_train-N_before):N_train
+  grid_test <- (N_train+1):(N_train+n_test)
+  
+  for (i in 1:d){
+    
+    lower <- c()
+    upper <- c()
+    for (t in 1:length(grid_test)){
+      CI <- quantile(predicted$pred.dist[,t,i], probs = c(0.05, 0.95))
+      lower <- append(lower, CI[[1]])
+      upper <- append(upper, CI[[2]])
+    }
+    
+    if(log_scale){
+      plot(grid_train, y_train[grid_train,i], type = "l",
+       xlim = c(min(grid_train), max(grid_test)),
+       ylim = c(min(y_train[,i], y_test[,i], lower),
+                max(y_train[,i], y_test[,i], upper)))
+    
+      lines(grid_test, y_test[,i], col = "red")
+      lines(grid_test, predicted_mean[,i], col = "blue")
+    
+      lines(grid_test, lower, lty = 2)
+      lines(grid_test, upper, lty = 2)
+    }
+    else{
+      plot(grid_train, exp(y_train[grid_train,i]), type = "l",
+       xlim = c(min(grid_train), max(grid_test)),
+       ylim = c(min(exp(y_train[,i]), exp(y_test[,i]), exp(lower)),
+                max(exp(y_train[,i]), exp(y_test[,i]), exp(upper))))
+    
+      lines(grid_test, exp(y_test[,i]), col = "red")
+      lines(grid_test, exp(predicted_mean[,i]), col = "blue")
+    
+      lines(grid_test, exp(lower), lty = 2)
+      lines(grid_test, exp(upper), lty = 2)
+    }
+    
+  }
+}
+
+plot_prediction(N_before = 150, log_scale = T)
+```
+
+
+```{r}
+comps <- get_comp(mbsts.model, slope=rep(F, d), local=rep(T, d),
+          season = rep(F,d), cyc = rep(T,d))
+
+plot_comp_mod(comps, d, y_train)
+
+```
+
+```{r}
+comps_from_5 <- comps[-(1:5),]
+
+matrices_trend <- list()
+matrices_cycle <- list()
+matrices_regr <- list()
+
+# tutte le stagioni
+
+for(i in 1:16){
+  season <- comps_from_5[((i-1)*13 + 1) : ((i-1)*13 + 13),]
+  season_trends <- season[,c(2,6,10,14,18,22)]
+  season_cycles <- season[,c(3,7,11,15,19,23)]
+  season_regressions <- season[,c(4,8,12,16,20,24)]
+  matrices_trend[[i]] <- cov(season_trends)
+  matrices_cycle[[i]] <- cov(season_cycles)
+  matrices_regr[[i]] <- cov(season_regressions)
+}
+
+
+matrices_trend_spring <- list()
+matrices_trend_summer <- list()
+matrices_trend_autumn <- list()
+matrices_trend_winter <- list()
+
+
+matrices_cycle_spring <- list()
+matrices_cycle_summer <- list()
+matrices_cycle_autumn <- list()
+matrices_cycle_winter <- list()
+
+
+matrices_regr_spring <- list()
+matrices_regr_summer <- list()
+matrices_regr_autumn <- list()
+matrices_regr_winter <- list()
+
+for(i in 1:4){
+  matrices_trend_spring[[i]] <- matrices_trend[[(i-1)*4 + 1]]
+  matrices_cycle_spring[[i]] <- matrices_cycle[[(i-1)*4 + 1]]
+  matrices_regr_spring[[i]] <- matrices_regr[[(i-1)*4 + 1]]
+  
+  matrices_trend_summer[[i]] <- matrices_trend[[(i-1)*4 + 2]]
+  matrices_cycle_summer[[i]] <- matrices_cycle[[(i-1)*4 + 2]]
+  matrices_regr_summer[[i]] <- matrices_regr[[(i-1)*4 + 2]]
+  
+  matrices_trend_autumn[[i]] <- matrices_trend[[(i-1)*4 + 3]]
+  matrices_cycle_autumn[[i]] <- matrices_cycle[[(i-1)*4 + 3]]
+  matrices_regr_autumn[[i]] <- matrices_regr[[(i-1)*4 + 3]]
+  
+  matrices_trend_winter[[i]] <- matrices_trend[[(i-1)*4 + 4]]
+  matrices_cycle_winter[[i]] <- matrices_cycle[[(i-1)*4 + 4]]
+  matrices_regr_winter[[i]] <- matrices_regr[[(i-1)*4 + 4]]
+}
+
+```
+
+```{r}
+#library(plot.matrix)
+
+for (i in 1:length(matrices_trend_autumn)){
+  layout(matrix(c(1, 2), nrow = 1), widths = c(4, 1))
+  plot(cov2cor(matrices_trend_autumn[[i]]), col = heat.colors(15))
+}
+
+print("")
+
+for (i in 1:length(matrices_trend_spring)){
+  layout(matrix(c(1, 2), nrow = 1), widths = c(4, 1))
+  plot(cov2cor(matrices_trend_spring[[i]]), col = heat.colors(15))
+}
+
+for (i in 1:length(matrices_trend)){
+  layout(matrix(c(1, 2), nrow = 1), widths = c(4, 1))
+  plot(cov2cor(matrices_trend[[i]]), col = heat.colors(15))
+}
+
+
+```
+
+
+
+
+
+
+
+
