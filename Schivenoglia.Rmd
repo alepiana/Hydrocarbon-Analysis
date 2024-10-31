@@ -1,0 +1,352 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Abbiamo pulito il dataset togliendo le variabili PM10 e Volume perché non di nostro interesse e mannosano + galattosano perché con troppi pochi dati (inoltre abbiamo già le variabili mannosano e galattosano singolarmente). Le covariate in esame sono quindi 17.
+
+```{r}
+library(readxl)
+data_schivenoglia <- read_excel("Clean_data.xlsx",
+                      sheet = "Schivenoglia_clean")
+head(data_schivenoglia)
+```
+
+
+Numero di NA per ogni covariata
+```{r}
+for (i in 2:length(data_schivenoglia)){
+  print(sum(is.na(data_schivenoglia[i])))
+}
+```
+
+Plot di ciascuna covariata
+```{r}
+for(i in 2:length(data_schivenoglia)){
+  plot(data_schivenoglia$`Data camp.`, data_schivenoglia[[i]],type="l")
+}
+```
+
+AUTOCORRELATION PLOT
+
+Soglia per giudicare il parametro dell'AR: 0.5
+
+Rimuoviamo tutti gli NA per ciascuna covariata prima di fare l'autocorrelation plot
+
+Cl- : AR(2)
+```{r}
+na_vect <- is.na(data_schivenoglia$`Cl-`)
+test <- data_schivenoglia$`Cl-`[which(na_vect == FALSE)]
+
+acf(test)
+```
+
+NO2- : troppi valori <0.02 e <0.04
+
+```{r}
+na_vect <- is.na(data_schivenoglia$`NO2-`)
+test <- data_schivenoglia$`NO2-`[which(na_vect == FALSE)]
+
+n <- length(which(data_schivenoglia$`NO2-`==0.02)) + length(which(data_schivenoglia$`NO2-`==0.04))
+# 1228 valori su 1560
+length(test)
+
+acf(test)
+```
+
+
+Br- : tutti i valori sono <0.02 0 <0.03
+```{r}
+na_vect <- is.na(data_schivenoglia$`Br-`)
+test <- data_schivenoglia$`Br-`[which(na_vect == FALSE)]
+
+n <- length(which(data_schivenoglia$`Br-`==0.02)) + length(which(data_schivenoglia$`Br-`==0.03))
+length(test)
+
+plot(test)
+acf(test)
+```
+
+
+NO3- : AR(3)
+
+```{r}
+na_vect <- is.na(data_schivenoglia$`NO3-`)
+test <- data_schivenoglia$`NO3-`[which(na_vect == FALSE)]
+
+plot(test)
+acf(test)
+```
+
+
+PO43- : 1550 valori su 1560 sono <0.05 o <0.09
+
+```{r}
+na_vect <- is.na(data_schivenoglia$`PO43-`)
+test <- data_schivenoglia$`PO43-`[which(na_vect == FALSE)]
+
+n <- length(which(data_schivenoglia$`PO43-`==0.05)) + length(which(data_schivenoglia$`PO43-`==0.09))
+length(test)
+
+plot(test)
+acf(test)
+```
+
+
+SO42- : AR(2). Ci sono degli outlier. 
+
+```{r}
+na_vect <- is.na(data_schivenoglia$`SO42-`)
+test <- data_schivenoglia$`SO42-`[which(na_vect == FALSE)]
+
+plot(test)
+acf(test)
+```
+
+
+
+Na+ : 698 valori su 1543 sono <0.12
+
+```{r}
+na_vect <- is.na(data_schivenoglia$`Na+`)
+test <- data_schivenoglia$`Na+`[which(na_vect == FALSE)]
+
+n <- length(which(data_schivenoglia$`Na+`==0.12))
+length(test)
+
+plot(test)
+acf(test)
+```
+
+
+NH4+ : AR(3)
+
+```{r}
+na_vect <- is.na(data_schivenoglia$`NH4+`)
+test <- data_schivenoglia$`NH4+`[which(na_vect == FALSE)]
+
+plot(test)
+acf(test)
+```
+
+
+K+ : AR(3)
+
+```{r}
+na_vect <- is.na(data_schivenoglia$`K+`)
+test <- data_schivenoglia$`K+`[which(na_vect == FALSE)]
+
+n <- length(which(data_schivenoglia$`K+`==0.08)) + length(which(data_schivenoglia$`K+`==0.12)) + length(which(data_schivenoglia$`K+`==0.06))
+# 395 valori su 1544 sotto soglia
+length(test)
+
+plot(test)
+acf(test)
+```
+
+
+
+Mg2+ : AR(2). Circa la metà dei valori sotto soglia
+
+```{r}
+na_vect <- is.na(data_schivenoglia$`Mg2+`)
+test <- data_schivenoglia$`Mg2+`[which(na_vect == FALSE)]
+
+n <- length(which(data_schivenoglia$`Mg2+`==0.06)) + length(which(data_schivenoglia$`Mg2+`==0.03))
+# 717 di 1544 sotto soglia
+
+length(test)
+plot(test)
+acf(test)
+```
+
+
+
+
+Ca2+ : AR(2)
+
+```{r}
+na_vect <- is.na(data_schivenoglia$`Ca2+`)
+test <- data_schivenoglia$`Ca2+`[which(na_vect == FALSE)]
+
+n <- length(which(data_schivenoglia$`Ca2+`==0.06)) + length(which(data_schivenoglia$`Ca2+`==0.08)) + length(which(data_schivenoglia$`Ca2+`==0.12))
+# 270 valori su 1506 sotto soglia
+length(test)
+
+plot(test)
+acf(test)
+```
+
+Arabitolo : quasi tutti i valori sono sotto soglia
+
+```{r}
+na_vect <- is.na(data_schivenoglia$`Arabitolo`)
+test <- data_schivenoglia$`Arabitolo`[which(na_vect == FALSE)]
+
+n <- length(which(data_schivenoglia$`Arabitolo`==0.01)) + length(which(data_schivenoglia$`Arabitolo`==0.02))
+# 1189 valori su 1417 sotto soglia
+length(test)
+
+plot(test)
+acf(test)
+```
+
+
+Mannitolo : quasi tutti i valori sono sotto soglia
+
+```{r}
+na_vect <- is.na(data_schivenoglia$`Mannitolo`)
+test <- data_schivenoglia$`Mannitolo`[which(na_vect == FALSE)]
+
+n <- length(which(data_schivenoglia$`Mannitolo`==0.01)) + length(which(data_schivenoglia$`Mannitolo`==0.02))
+# 1189 valori su 1417 sotto soglia
+length(test)
+
+plot(test)
+acf(test)
+```
+
+Levoglucosano : 692 valori sotto soglia; dall'autocorrelation plot i valori risultano molto correlati anche a tanti lag di differenza
+
+```{r}
+na_vect <- is.na(data_schivenoglia$`Levoglucosano`)
+test <- data_schivenoglia$`Levoglucosano`[which(na_vect == FALSE)]
+
+n <- length(which(data_schivenoglia$`Levoglucosano`==0.02))
+# 692 valori su 1532 sotto soglia
+length(test)
+
+plot(test)
+acf(test)
+```
+
+
+Mannosano : quasi tutti i valori sono sotto soglia
+
+```{r}
+na_vect <- is.na(data_schivenoglia$`Mannosano`)
+test <- data_schivenoglia$`Mannosano`[which(na_vect == FALSE)]
+
+n <- length(which(data_schivenoglia$`Mannosano`==0.01)) + length(which(data_schivenoglia$`Mannosano`==0.02))
+# 1093 valori su 1413 sotto soglia
+length(test)
+
+plot(test)
+acf(test)
+```
+
+Galattosano : quasi tutti i valori sono sotto soglia
+
+```{r}
+na_vect <- is.na(data_schivenoglia$`Galattosano`)
+test <- data_schivenoglia$`Galattosano`[which(na_vect == FALSE)]
+
+n <- length(which(data_schivenoglia$`Galattosano`==0.01)) + length(which(data_schivenoglia$`Galattosano`==0.02))
+# 1259 valori su 1413 sotto soglia
+length(test)
+
+plot(test)
+acf(test)
+```
+
+
+TRANSF LOGARITMICA
+
+```{r}
+aaaa <- na.omit(data_schivenoglia)
+log_data <- log(aaaa[,2:length(aaaa)])
+
+for(i in 2:length(log_data)){
+  plot(log_data[[i]], type="l")
+}
+```
+
+AR(1) di NO3- non trasf
+```{r}
+model <- arima(data_schivenoglia$`NO3-`, order = c(1,0,0))
+model
+
+plot(model$coef[2]+model$coef[1]*data_schivenoglia$`NO3-`,col="red", type="l",ylim=c(0,60))
+lines(data_schivenoglia$`NO3-`,col="blue")
+```
+
+
+AR(1) di NO3- transf
+```{r}
+model2 <- arima(log_data$`NO3-`, order = c(1,0,0))
+model2
+
+plot(model2$coef[2]+model2$coef[1]*log_data$`NO3-`,col="red", type="l",ylim=c(-3,5))
+lines(log_data$`NO3-`,col="blue")
+```
+
+
+
+
+
+
+CONSIDERIAMO SOLO I DATI CHE PRESENTANO UNA STAGIONALITA
+```{r}
+seasonal_s <- data_schivenoglia[,c(2,5,7,9,10,11,12,15)]
+library(dplyr)
+#carlotta <- na.omit(seasonal_s)
+carlotta <- seasonal_s
+log_seasonal <- log(carlotta[,2:length(carlotta)])
+log_seasonal <- log_seasonal %>% mutate_all(function(x) ifelse(is.infinite(x), NA, x))
+
+for(i in 2:length(log_seasonal)){
+  plot(log_seasonal[[i]], type="l")
+}
+```
+
+```{r}
+plot(log_seasonal[[1]],type="l",ylim=c(-5,5),col="forestgreen")
+for(i in 2:length(log_seasonal)){
+  lines(log_seasonal[[i]], type="l", col=i)
+}
+```
+```{r}
+library(ggplot2)
+
+m <- ggplot()
+
+
+
+m <- geom_line( aes(x=data_schivenoglia$`Data camp.`, y= log_seasonal[[1]]), col=1)
+m <- geom_line( aes(x=data_schivenoglia$`Data camp.`, y= log_seasonal[[2]]), col=2)
+m <- geom_line( aes(x=data_schivenoglia$`Data camp.`, y= log_seasonal[[3]]), col=3)
+m <- geom_line( aes(x=data_schivenoglia$`Data camp.`, y= log_seasonal[[4]]), col=4)
+m <- geom_line( aes(x=data_schivenoglia$`Data camp.`, y= log_seasonal[[5]]), col=5)
+m <- geom_line( aes(x=data_schivenoglia$`Data camp.`, y= log_seasonal[[6]]), col=6)
+m <- geom_line( aes(x=data_schivenoglia$`Data camp.`, y= log_seasonal[[7]]), col=7)
+
+plot(m)
+
+
+```
+
+
+
+```{r}
+plot(data_schivenoglia$`Data camp.`, seasonal_s[[1]],type="l",ylim=c(0,60),col="forestgreen",xlab="Time", ylab="Pollutants (µg/m^3)",main= "Time Series Schivenoglia")
+for(i in 2:length(seasonal_s)){
+  lines(data_schivenoglia$`Data camp.`,seasonal_s[[i]], type="l", col=i)
+}
+```
+```{r}
+seasonal2 <- seasonal_s[,-2]
+plot(data_schivenoglia$`Data camp.`, seasonal2[[1]],type="l",ylim=c(0,20),col="forestgreen",xlab="Time", ylab="Pollutants",main= "Time Series Schivenoglia")
+for(i in 2:length(seasonal2)){
+  lines(data_schivenoglia$`Data camp.`,seasonal2[[i]], type="l", col=i)
+}
+```
+
+Non lo userei
+
+Coi dati log
+```{r}
+plot(data_schivenoglia$`Data camp.`, log_seasonal[[1]],type="l",ylim=c(-5,5),col="forestgreen",xlab="Time", ylab="Pollutants",main= "Log Time Series Schivenoglia")
+for(i in 2:length(log_seasonal)){
+  lines(data_schivenoglia$`Data camp.`,log_seasonal[[i]], type="l", col=i)
+}
+```
