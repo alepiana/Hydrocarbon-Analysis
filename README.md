@@ -9,3 +9,6 @@ This project was conducted from November '23 to February '24. Key aspects that c
 ## Download Final Presentation
 
 [Presentation](./final_pres_Bayes.pdf)
+
+#### Disclaimer
+Unfortunately the code is not neat and tidy at all
