@@ -1,0 +1,847 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+MARSS CON COVARIATE:
+```{r}
+library(readxl)
+
+library(readxl)
+Dati_meteo_schiv_mean_day_Copia <- read_excel("C:/Users/Carlotta Francia/Desktop/politecnico/progetto bayesian/Dati_meteo_schiv_mean_day.xlsx")
+#dataset<-Dati_meteo_schiv_mean_day_Copia
+#meteo_data<-Dati_meteo_schiv_mean_day_Copia
+
+#View(Dati_meteo_schiv_mean_day_Copia)
+```
+
+```{r}
+library(readxl)
+
+meteo_data<-Dati_meteo_schiv_mean_day_Copia
+
+library(tidyverse)
+meteo_data$giorno<- as.Date(meteo_data$giorno, origin = "2018-02-15")
+```
+
+
+```{r}
+library(xts)
+# Create an xts time series object
+your_time_series_meteo <- xts(meteo_data[,-1], order.by = meteo_data$giorno)
+# Converti la colonna Data in formato Date, se non è già in quel formato
+meteo_data$giorno <- as.Date(meteo_data$giorno)
+
+# Crea un data frame con tutte le date comprese nell'intervallo
+#date_range <- data.frame(Data = seq(min(dataset$giorno), max(dataset$giorno), by = "day"))
+
+# Unisci il tuo dataset con il data frame contenente tutte le date
+#dataset_complete <- date_range %>%
+ # left_join(dataset, by = c("Data" = "giorno"))
+
+# Ordina il dataset in base alla colonna Data
+#dataset_complete <- dataset_complete %>%
+ # arrange(Data)
+```
+
+
+
+Sostituisco gli NA con la media della colonna corrispondente
+```{r}
+library(dplyr)
+
+# Sostituisci i NA con la media solo nelle colonne numeriche
+#dataset_meteo <- dataset_complete %>%
+ # mutate_at(vars(-1), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .))
+
+# Controllo che la somma degli NA sia effettivamente zero
+#somma_na <- colSums(is.na(dataset_meteo))
+#somma_na
+```
+
+
+
+```{r}
+library(readxl)
+
+
+dataset <- read_excel("Clean_data.xlsx",
+                      sheet = "Schivenoglia_clean")
+library(tidyverse)
+
+# Converti la colonna Data in formato Date, se non è già in quel formato
+dataset$`Data camp.` <- as.Date(dataset$`Data camp.`)
+
+# Crea un data frame con tutte le date comprese nell'intervallo
+date_range <- data.frame(Data = seq(min(dataset$`Data camp.`), max(dataset$`Data camp.`), by = "day"))
+
+# Unisci il tuo dataset con il data frame contenente tutte le date
+dataset_complete <- date_range %>%
+  left_join(dataset, by = c("Data" = "Data camp."))
+
+# Ordina il dataset in base alla colonna Data
+dataset_complete <- dataset_complete %>%
+  arrange(Data)
+```
+
+
+
+Sostituisco gli NA con la media della colonna corrispondente
+```{r}
+library(dplyr)
+
+# Sostituisci i NA con la media solo nelle colonne numeriche
+dataset1 <- dataset_complete %>%
+  mutate_at(vars(-1), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .))
+
+# Controllo che la somma degli NA sia effettivamente zero
+somma_na <- colSums(is.na(dataset1))
+somma_na
+```
+
+
+
+```{r}
+library(xts)
+# Assuming 'your_dataset' is your data frame
+# If your date column is not in a Date format, convert it
+#dati<-meteo_data
+
+
+# Create an xts time series object
+#your_time_series <- xts(dati[,-1], order.by = dati$giorno)
+
+# Calculate weekly means
+weekly_means_meteo <- apply.weekly(your_time_series_meteo, mean,na.rm = TRUE)
+```
+
+
+
+
+
+```{r}
+library(xts)
+
+
+# Assuming 'your_dataset' is your data frame
+# If your date column is not in a Date format, convert it
+#dataset2<-dataset1[,-2]
+
+# Create an xts time series object
+your_time_series <- xts(dataset1[,-1], order.by = dataset1$Data)
+```
+
+
+```{r}
+# Calculate weekly means
+weekly_means_dataset <- apply.weekly(dataset1, mean,na.rm = TRUE)
+
+```
+
+```{r}
+dataset3<- log(weekly_means_dataset[,-c(2,3,5,12,13,15,16)])
+datasetnew<-dataset3[-c(240,241,242),]
+
+```
+
+```{r}
+library(ggplot2)
+
+ggplot(datasetnew, aes(x = 1:nrow(datasetnew))) +
+  geom_line(aes(y = `Cl-`, color = "Cl-")) +
+  geom_line(aes(y = `NO3-`, color = "No3-")) +
+  geom_line(aes(y = `SO42-`, color = "SO42-")) +
+  geom_line(aes(y = `Na+`, color = "Na+")) +
+  geom_line(aes(y = `NH4+`, color = "NH4+")) +
+  geom_line(aes(y = `K+`, color = "K+")) +
+  geom_line(aes(y = `Mg2+`, color = "Mg2+")) +
+  geom_line(aes(y = `Ca2+`, color = "Ca2+")) +
+  geom_line(aes(y = Levoglucosano, color = "Levoglucosano")) +  # Missing + here
+  labs(title = "Time Series Plot", x = "Time", y = "Values") +
+  scale_color_manual(values = c("Cl-" = "blue", "No3-" = "red", "SO42-" = "green",
+                                 "Na+" = "pink", "NH4+" = "lightblue", "K+" = "orange",
+                                 "Mg2+" = "black", "Ca2+" = "purple", "Levoglucosano" = "brown"))
+```
+```{r}
+start_year <- 2018
+start_week <- 1
+dev.new()
+par(mfrow = c(3, 1))
+
+your_ts <- ts(datasetnew[,1], start = c(start_year, start_week), frequency = 52)
+your_ts_meteo<-ts(weekly_means_meteo[,2], start = c(start_year, start_week), frequency = 52)
+your_ts2 <- ts(datasetnew[,2], start = c(start_year, start_week), frequency = 52)
+
+
+# Decompose the time series into components (trend, seasonal, and remainder)
+decomposed_ts <- decompose(your_ts)
+decomposed_ts_meteo <- decompose(your_ts_meteo)
+
+decomposed_ts_2 <- decompose(your_ts2)
+
+# Plot seasonality component
+plot(decomposed_ts$seasonal, main = "Seasonality Component ", ylab = "Seasonality", col = "green")
+plot(decomposed_ts_2$seasonal, main = "Seasonality Component ", ylab = "Seasonality", col = "red")
+plot(decomposed_ts_meteo$seasonal, main = "Seasonality Component ", ylab = "Seasonality", col = "blue")
+
+```
+Covariate Humidity can stay with Group1, while temperature is different from each
+
+
+```{r}
+start_year <- 2018
+start_week <- 1
+dev.new()
+par(mfrow = c(3, 1))
+
+your_ts <- ts(datasetnew[,1], start = c(start_year, start_week), frequency = 52)
+your_ts_meteo<-ts(weekly_means_meteo[,3], start = c(start_year, start_week), frequency = 52)
+your_ts2 <- ts(datasetnew[,8], start = c(start_year, start_week), frequency = 52)
+
+
+# Decompose the time series into components (trend, seasonal, and remainder)
+decomposed_ts <- decompose(your_ts)
+decomposed_ts_meteo <- decompose(your_ts_meteo)
+
+decomposed_ts_2 <- decompose(your_ts2)
+
+# Plot seasonality component
+plot(decomposed_ts$seasonal, main = "Seasonality Component ", ylab = "Seasonality", col = "green")
+plot(decomposed_ts_2$seasonal, main = "Seasonality Component ", ylab = "Seasonality", col = "red")
+plot(decomposed_ts_meteo$seasonal, main = "Seasonality Component ", ylab = "Seasonality", col = "blue")
+
+```
+humidity mean with group 3
+
+
+```{r}
+start_year <- 2018
+start_week <- 1
+dev.new()
+par(mfrow = c(3, 1))
+
+your_ts <- ts(datasetnew[,4], start = c(start_year, start_week), frequency = 52)
+your_ts_meteo<-ts(weekly_means_meteo[,6], start = c(start_year, start_week), frequency = 52)
+your_ts2 <- ts(datasetnew[,1], start = c(start_year, start_week), frequency = 52)
+
+
+# Decompose the time series into components (trend, seasonal, and remainder)
+decomposed_ts <- decompose(your_ts)
+decomposed_ts_meteo <- decompose(your_ts_meteo)
+
+decomposed_ts_2 <- decompose(your_ts2)
+
+# Plot seasonality component
+plot(decomposed_ts$seasonal, main = "Seasonality Component ", ylab = "Seasonality", col = "green")
+plot(decomposed_ts_2$seasonal, main = "Seasonality Component ", ylab = "Seasonality", col = "red")
+plot(decomposed_ts_meteo$seasonal, main = "Seasonality Component ", ylab = "Seasonality", col = "blue")
+
+```
+Similar to group 2 but not real evidence
+
+```{r}
+start_year <- 2018
+start_week <- 1
+dev.new()
+par(mfrow = c(3, 1))
+
+your_ts <- ts(datasetnew[,1], start = c(start_year, start_week), frequency = 52)
+your_ts_meteo<-ts(weekly_means_meteo[,5], start = c(start_year, start_week), frequency = 52)
+your_ts2 <- ts(datasetnew[,4], start = c(start_year, start_week), frequency = 52)
+
+
+# Decompose the time series into components (trend, seasonal, and remainder)
+decomposed_ts <- decompose(your_ts)
+decomposed_ts_meteo <- decompose(your_ts_meteo)
+
+decomposed_ts_2 <- decompose(your_ts2)
+
+# Plot seasonality component
+plot(decomposed_ts$seasonal, main = "Seasonality Component ", ylab = "Seasonality", col = "green")
+plot(decomposed_ts_2$seasonal, main = "Seasonality Component ", ylab = "Seasonality", col = "red")
+plot(decomposed_ts_meteo$seasonal, main = "Seasonality Component ", ylab = "Seasonality", col = "blue")
+```
+Clouds again with group 1 
+
+
+```{r}
+start_year <- 2018
+start_week <- 1
+dev.new()
+par(mfrow = c(3, 1))
+
+your_ts <- ts(datasetnew[,1], start = c(start_year, start_week), frequency = 52)
+your_ts_meteo<-ts(weekly_means_meteo[,7], start = c(start_year, start_week), frequency = 52)
+your_ts2 <- ts(datasetnew[,4], start = c(start_year, start_week), frequency = 52)
+
+
+# Decompose the time series into components (trend, seasonal, and remainder)
+decomposed_ts <- decompose(your_ts)
+decomposed_ts_meteo <- decompose(your_ts_meteo)
+
+decomposed_ts_2 <- decompose(your_ts2)
+
+# Plot seasonality component
+plot(decomposed_ts$seasonal, main = "Seasonality Component ", ylab = "Seasonality", col = "green")
+plot(decomposed_ts_2$seasonal, main = "Seasonality Component ", ylab = "Seasonality", col = "red")
+plot(decomposed_ts_meteo$seasonal, main = "Seasonality Component ", ylab = "Seasonality", col = "blue")
+```
+similar to group 1 but not sure
+
+```{r}
+library(Matrix)
+
+num_groups <- 4
+A<-diag(9);
+
+#Here I construct an identity matrix 9x9
+
+#Now I want to compute B:
+
+group_membership <- c(1, 1, 3, 2, 1, 1, 2, 4, 1)  # Group assignments for each pollutant
+
+#I can take for simplicity also B to be a diagonal matrix with ones
+
+B<-diag(9)
+
+# Create group-specific observed data (y)
+
+# Create a list to store sparse observed data (y)
+
+y_list <- list()
+
+# Loop through unique groups
+for (group in unique(group_membership)) {
+  # Select indices for pollutants in the current group
+  group_indices <- which(group_membership == group)
+  
+  # Extract observed data for the current group
+  y_group <- datasetnew[, group_indices]
+  
+  # Append to the list
+  y_list[[as.character(group)]] <- y_group
+}
+
+
+# Bind observed data
+
+y <- do.call(cbind, y_list)
+y <- y[, c(1:5, 7, 8, 6, 9)]
+dat<-t(y)
+```
+
+```{r}
+meteodata<-weekly_means_meteo[,c(2,5,6)]
+C <- matrix(data = c( 1, 0,0, 0, 0, 1, 0, 0, 0, 0, 1, 0), nrow = 4, ncol = 3,byrow=TRUE)
+
+print(C)
+```
+```{r}
+group1_vars <- c(1,2,5,6,9)
+group2_vars <- c(4,7)
+group3_vars <- c(3)
+group4_vars <- c(8)
+```
+
+```{r}
+scode4<-"
+data {
+  int<lower=0> TT; // length of time series
+  int<lower=0> N; 
+  int<lower=0> M; // number of variables
+  int<lower=0> c;
+  matrix[N,TT] y;
+  matrix[M, M] B; // known state transition matrix
+  matrix[N,N] E2;
+  matrix[N, M] Z;  // known observation matrix
+  matrix[M,M] Q;
+  matrix[M,c] C;
+  matrix[c,TT] covariates;
+  
+}
+
+parameters {
+
+  real u;  // intercept term
+  vector[M] x0; 
+ cov_matrix[N] R;  // measurement noise covariance matrix
+    // process noise covariance matrix
+}
+
+transformed parameters {
+  matrix[M,TT] x;  // state vector
+
+
+  for (t in 1:TT) {
+    if (t == 1) {
+    vector[M] my_vector;
+      my_vector = B * x0;  // Matrix multiplication with *
+      for (i in 1:M) {
+  x[i, t] = my_vector[i];
+    }
+    } else {
+    vector[M] my_vector;
+      my_vector = B * x[, t - 1]+C*covariates[,t]; 
+      for (i in 1:M) {
+  x[i, t] = my_vector[i];
+    }
+  }
+  }
+print(x);
+}
+
+model {
+  // Priors on R and other parameters...
+  R ~ inv_wishart(9, E2);  
+  x0 ~ normal(0, 10);
+
+
+//Likelihood
+ for (t in 1:TT) {
+    vector[N] mean_val = Z * x[, t];
+    
+    y[,t] ~ multi_normal(mean_val, R);
+  }
+}
+
+generated quantities {
+  vector[TT] log_lik;
+
+  // Likelihood for log likelihood calculation
+  for (t in 1:TT) {
+    vector[N] mean_val = Z * x[, t];
+    log_lik[t] = multi_normal_lpdf(y[,t] | mean_val, R);
+  }
+}
+"
+```
+
+
+```{r}
+library(MASS)
+newmeteodata<-meteodata
+Y <- dat
+Bnew=diag(4)
+N<-9
+Cnew=rbind(c(1,0,0,0),c(1,0,0,0),c(1,0,0,0),c(1,0,0,0),c(1,0,0,0),c(0,1,0,0),c(0,1,0,0),c(0,0,1,0),c(0,0,0,1))
+M<-4
+E2<-diag(N)
+N<-9
+c<-3
+Q<-diag(M)
+covariates<-t(log(newmeteodata))
+
+#Since I have 5 extra covariates
+```
+```{r}
+E2 <- E2 + 1e-6 * diag(N)
+
+mod <- rstan::stan(model_code = scode4, data = list(y = Y, 
+    TT = ncol(Y), N = nrow(Y), B=Bnew , Z=Cnew,M=M,E2=E2,C=C,c=c,covariates=covariates,Q=Q), pars = c("R", "x", 
+    "u","x0"), chains = 3, iter = 100, thin = 1,control = list(max_treedepth = 20))
+```
+
+```{r}
+pars <- rstan::extract(mod)
+matrici_R <- rstan::extract(mod, "R")
+str(matrici_R)
+num_catene <- length(matrici_R)
+num_iterazioni <- dim(matrici_R[[1]])[3]
+dimensioni_matrici_R <- dim(matrici_R[[1]])
+media_R <- apply(matrici_R$R, c(2, 3), mean)
+
+correlation_matrix <- cov2cor(media_R)
+```
+```{r}
+warmup_iterations <- 500
+
+# Estrai la lista di matrici R
+matrici_R <- rstan::extract(mod, "R")
+
+# Escludi la fase di warmup per ogni catena
+matrici_R_no_warmup <- lapply(matrici_R, function(chain) chain[(warmup_iterations + 1):nrow(chain), , ])
+
+media_R <- apply(matrici_R_no_warmup$R, c(2, 3), mean)
+
+correlation_matrix1 <- cov2cor(media_R)
+
+```
+
+WITHOUT COVARIATES 
+```{r}
+scode5<-"
+data {
+  int<lower=0> TT; // length of time series
+  int<lower=0> N; 
+  int<lower=0> M; // number of variables
+  matrix[N,TT] y;
+  matrix[M, M] B; // known state transition matrix
+  matrix[N,N] E2;
+  matrix[N, M] Z;  // known observation matrix
+  matrix[M,M] Q;
+  
+}
+
+parameters {
+
+  real u;  // intercept term
+  vector[M] x0; 
+ cov_matrix[N] R;  // measurement noise covariance matrix
+    // process noise covariance matrix
+}
+
+transformed parameters {
+  matrix[M,TT] x;  // state vector
+
+
+  for (t in 1:TT) {
+    if (t == 1) {
+    vector[M] my_vector;
+      my_vector = B * x0;  // Matrix multiplication with *
+      for (i in 1:M) {
+  x[i, t] = my_vector[i];
+    }
+    } else {
+    vector[M] my_vector;
+      my_vector = B * x[, t - 1]; 
+      for (i in 1:M) {
+  x[i, t] = my_vector[i];
+    }
+  }
+  }
+}
+
+model {
+  // Priors on R and other parameters...
+  R ~ inv_wishart(9, E2);  
+  x0 ~ normal(0, 10);
+
+
+//Likelihood
+ for (t in 1:TT) {
+    vector[N] mean_val = Z * x[, t];
+    
+    y[,t] ~ multi_normal(mean_val, R);
+  }
+}
+
+generated quantities {
+  vector[TT] log_lik;
+
+  // Likelihood for log likelihood calculation
+  for (t in 1:TT) {
+    vector[N] mean_val = Z * x[, t];
+    log_lik[t] = multi_normal_lpdf(y[,t] | mean_val, R);
+  }
+}
+"
+```
+
+```{r}
+library(MASS)
+#newmeteodata<-meteodata
+Y <- dat
+Bnew=diag(4)
+N<-9
+Cnew=rbind(c(1,0,0,0),c(1,0,0,0),c(1,0,0,0),c(1,0,0,0),c(1,0,0,0),c(0,1,0,0),c(0,1,0,0),c(0,0,1,0),c(0,0,0,1))
+M<-4
+E2<-diag(N)
+N<-9
+c<-3
+Q<-diag(M)
+#covariates<-t(meteodata)
+
+#Since I have 5 extra covariates
+```
+```{r}
+E2 <- E2 + 1e-6 * diag(N)
+
+mod <- rstan::stan(model_code = scode5, data = list(y = Y, 
+    TT = ncol(Y), N = nrow(Y), B=Bnew , Z=Cnew,M=M,E2=E2,Q=Q), pars = c("R", "x", 
+    "u","x0"), chains = 3, iter = 500, thin = 1,control = list(max_treedepth = 20))
+```
+
+```{r}
+pars <- rstan::extract(mod)
+matrici_R <- rstan::extract(mod, "R")
+str(matrici_R)
+num_catene <- length(matrici_R)
+num_iterazioni <- dim(matrici_R[[1]])[3]
+dimensioni_matrici_R <- dim(matrici_R[[1]])
+media_R <- apply(matrici_R$R, c(2, 3), mean)
+
+correlation_matrix <- cov2cor(media_R)
+```
+
+
+Compute single differences: first difference for stationariety
+```{r}
+meteodata<-weekly_means_meteo[,c(2,5,6)]
+meteodata[,1]=diff(meteodata[,1])
+meteodata[,2]=diff(meteodata[,2])
+meteodata[,3]=diff(meteodata[,3])
+meteodata[1,]=0
+#meteodatalog=log(meteodata)
+
+```
+
+```{r}
+scode6<-"
+data {
+  int<lower=0> TT; // length of time series
+  int<lower=0> N; 
+  int<lower=0> M; // number of variables
+  int<lower=0> c;
+  matrix[N,TT] y;
+  // known state transition matrix matrix[M, M] B;
+  matrix[N,N] E2;
+  matrix[N, M] Z;  // known observation matrix
+  matrix[M,M] Q;
+  matrix[M,c] C;
+  matrix[c,TT] covariates;
+  
+}
+
+parameters {
+matrix[M, M] B;
+real<lower=0> sigma_B;
+  real u;  // intercept term
+  vector[M] x0; 
+ cov_matrix[N] R;  // measurement noise covariance matrix
+    // process noise covariance matrix
+}
+
+transformed parameters {
+  matrix[M,TT] x;  // state vector
+
+
+  for (t in 1:TT) {
+    if (t == 1) {
+    vector[M] my_vector;
+      my_vector = B * x0;  // Matrix multiplication with *
+      for (i in 1:M) {
+  x[i, t] = my_vector[i];
+    }
+    } else {
+    vector[M] my_vector;
+      my_vector = B * x[, t - 1]+C*covariates[,t]; 
+      for (i in 1:M) {
+  x[i, t] = my_vector[i];
+    }
+  }
+  }
+}
+
+model {
+  // Priors on R and other parameters...
+  R ~ inv_wishart(9, E2);  
+  x0 ~ normal(0, 10);
+  for (i in 1:M) {
+    for (j in 1:M) {
+      B[i, j] ~ normal(0, sigma_B); // Prior on each element of B
+    }
+  }
+
+
+//Likelihood
+ for (t in 1:TT) {
+    vector[N] mean_val = Z * x[, t];
+    
+    y[,t] ~ multi_normal(mean_val, R);
+  }
+}
+
+generated quantities {
+  vector[TT] log_lik;
+
+  // Likelihood for log likelihood calculation
+  for (t in 1:TT) {
+    vector[N] mean_val = Z * x[, t];
+    log_lik[t] = multi_normal_lpdf(y[,t] | mean_val, R);
+  }
+}
+"
+```
+
+```{r}
+library(MASS)
+newmeteodata<-meteodata
+Y <- dat
+Bnew=diag(4)
+N<-9
+Cnew=rbind(c(1,0,0,0),c(1,0,0,0),c(1,0,0,0),c(1,0,0,0),c(1,0,0,0),c(0,1,0,0),c(0,1,0,0),c(0,0,1,0),c(0,0,0,1))
+M<-4
+E2<-diag(N)
+N<-9
+c<-3
+Q<-diag(M)
+covariates<-t(meteodata)
+
+#Since I have 5 extra covariates
+```
+```{r}
+E2 <- E2 + 1e-6 * diag(N)
+
+mod <- rstan::stan(model_code = scode6, data = list(y = Y, 
+    TT = ncol(Y), N = nrow(Y) , Z=Cnew,M=M,E2=E2,C=C,c=c,covariates=covariates,Q=Q), pars = c("R", "x", "B","sigma_B",
+    "u","x0"), chains = 3, iter = 1500,warmup = 500, thin = 1,control = list(max_treedepth = 20))
+```
+
+```{r}
+pars <- rstan::extract(mod)
+autoregressive_parameters <- pars$sigma_B # Adjust this line based on the structure of your fit object
+
+# Check for stationarity
+stationary <- all(abs(autoregressive_parameters) < 1)
+
+if (stationary) {
+  cat("The AR(1) process is stationary.\n")
+} else {
+  cat("The AR(1) process is not stationary.\n")
+}
+warmup_iterations <- 500
+
+# Estrai la lista di matrici R
+matrici_R <- rstan::extract(mod, "R")
+
+# Escludi la fase di warmup per ogni catena
+matrici_R_no_warmup <- lapply(matrici_R, function(chain) chain[(warmup_iterations + 1):nrow(chain), , ])
+
+media_R <- apply(matrici_R_no_warmup$R, c(2, 3), mean)
+
+correlation_matrix1 <- cov2cor(media_R)
+```
+
+```{r}
+scode7<-"
+data {
+  int<lower=0> TT; // length of time series
+  int<lower=0> N; 
+  int<lower=0> M; // number of variables
+  int<lower=0> c;
+  matrix[N,TT] y;
+  // known state transition matrix matrix[M, M] B;
+  matrix[N,N] E2;
+  matrix[N, M] Z;  // known observation matrix
+  matrix[M,M] Q;
+  matrix[N,c] D;
+  matrix[c,TT] covariates;
+  matrix[M, M] B;
+  
+}
+
+parameters {
+
+
+  real u;  // intercept term
+  vector[M] x0; 
+ cov_matrix[N] R;  // measurement noise covariance matrix
+    // process noise covariance matrix
+}
+
+transformed parameters {
+  matrix[M,TT] x;  // state vector
+
+
+  for (t in 1:TT) {
+    if (t == 1) {
+    vector[M] my_vector;
+      my_vector = B * x0;  // Matrix multiplication with *
+      for (i in 1:M) {
+  x[i, t] = my_vector[i];
+    }
+    } else {
+    vector[M] my_vector;
+      my_vector = B * x[, t - 1]; 
+      for (i in 1:M) {
+  x[i, t] = my_vector[i];
+    }
+  }
+  }
+}
+
+model {
+  // Priors on R and other parameters...
+  R ~ inv_wishart(10, E2);  
+  x0 ~ normal(0, 4);
+
+
+
+//Likelihood
+ for (t in 1:TT) {
+    vector[N] mean_val = Z * x[, t]+D*covariates[,t];
+    
+    y[,t] ~ multi_normal(mean_val, R);
+  }
+}
+
+generated quantities {
+  vector[TT] log_lik;
+
+  // Likelihood for log likelihood calculation
+  for (t in 1:TT) {
+    vector[N] mean_val = Z * x[, t];
+    log_lik[t] = multi_normal_lpdf(y[,t] | mean_val, R);
+  }
+}
+"
+```
+
+```{r}
+library(MASS)
+newmeteodata<-meteodata
+Y <- dat
+Bnew=diag(4)
+N<-9
+Cnew=rbind(c(1,0,0,0),c(1,0,0,0),c(1,0,0,0),c(1,0,0,0),c(1,0,0,0),c(0,1,0,0),c(0,1,0,0),c(0,0,1,0),c(0,0,0,1))
+D=rbind(c(0.5,0.5,0),c(0.5,0.5,0),c(0.5,0.5,0),c(0.5,0.5,0),c(0.5,0.5,0),c(0,0,0),c(0,0,1),c(0,0,1),c(0,1,0))
+M<-4
+E2<-diag(N)
+N<-9
+c<-3
+Q<-diag(M)
+covariates<-t(meteodata)
+
+#Since I have 5 extra covariates
+```
+```{r}
+E2 <- E2 + 1e-6 * diag(N)
+
+mod <- rstan::stan(model_code = scode7, data = list(y = Y, 
+    TT = ncol(Y), N = nrow(Y) , B=Bnew,Z=Cnew,M=M,E2=E2,D=D,c=c,covariates=covariates,Q=Q), pars = c("R", "x",
+    "u","x0","log_lik"), chains = 3, iter = 1500,warmup = 500, thin = 1,control = list(max_treedepth = 15))
+```
+```{r}
+rhats <- rstan::stan_rhat(mod)
+log_likelihood <- extract(mod,"log_lik")$log_lik
+sumtot <- sum(log_likelihood)
+
+```
+
+
+```{r}
+# Supponiamo che il numero di iterazioni di warmup sia warmup_iterations
+warmup_iterations <- 500
+
+# Estrai la lista di matrici R
+matrici_R <- rstan::extract(mod, "R")
+
+# Escludi la fase di warmup per ogni catena
+matrici_R_no_warmup <- lapply(matrici_R, function(chain) chain[(warmup_iterations + 1):nrow(chain), , ])
+
+media_R <- apply(matrici_R_no_warmup$R, c(2, 3), mean)
+
+correlation_matrix11 <- cov2cor(media_R)
+
+```
+
+
+```{r}
+library(plot.matrix)
+
+# Specifica il layout con spazio per la legenda
+layout(matrix(c(1, 2), nrow = 1), widths = c(4, 1))
+
+# Plot della matrice di correlazione
+plot(correlation_matrix11, col=hcl.colors(15, palette = "Blue-Red 2"), main="Schivenoglia with covariates")
+```
